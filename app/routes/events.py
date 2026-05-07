@@ -7,7 +7,31 @@ events_bp = Blueprint('events', __name__, url_prefix='/api/events')
 
 @events_bp.route('', methods=['POST'])
 def create_event():
-    """ Create a new event """
+    """
+    Create a new event.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          properties:
+            name:
+              type: string
+              example: "Taylor Swift Concert"
+            date:
+              type: string
+              format: date-time
+              example: "2024-06-15T19:00:00"
+            location:
+              type: string
+              example: "Madison Square Garden"
+    responses:
+      201:
+        description: Event created successfully
+      400:
+        description: Invalid input
+    """
     data = request.get_json()
 
     if not data or not data.get('name') or not data.get('date'):
@@ -32,14 +56,33 @@ def create_event():
 
 @events_bp.route('', methods=['GET'])
 def list_events():
-    """ List all events """
+    """
+    List all events.
+    ---
+    responses:
+      200:
+        description: List of all events
+    """
     events = Event.query.all()
     return jsonify([event.to_dict() for event in events]), 200
 
 
 @events_bp.route('/<int:event_id>', methods=['GET'])
 def get_event(event_id):
-    """ Get a specific event by ID """
+    """
+    Get a specific event by ID.
+    ---
+    parameters:
+      - name: event_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Event details
+      404:
+        description: Event not found
+    """
     event = Event.query.get(event_id)
 
     if not event:
@@ -50,8 +93,33 @@ def get_event(event_id):
 
 @events_bp.route('/<int:event_id>/seats', methods=['POST'])
 def bulk_create_seats(event_id):
-    """ Bulk create seats for an event.
-    Creates seats in format: A1, A2, A3... B1, B2, B3... etc."""
+    """
+    Bulk create seats for an event.
+    Creates seats in format: A1, A2, A3... B1, B2, B3... etc.
+    
+    ---
+    parameters:
+      - name: event_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          properties:
+            num_rows:
+              type: integer
+              example: 5
+            seats_per_row:
+              type: integer
+              example: 20
+    responses:
+      201:
+        description: Seats created successfully
+      404:
+        description: Event not found
+    """
     event = Event.query.get(event_id)
 
     if not event:
@@ -92,7 +160,24 @@ def bulk_create_seats(event_id):
 
 @events_bp.route('/<int:event_id>/seats', methods=['GET'])
 def list_event_seats(event_id):
-    """ List all seats for an event """
+    """
+    List all seats for an event.
+    ---
+    parameters:
+      - name: event_id
+        in: path
+        type: integer
+        required: true
+      - name: status
+        in: query
+        type: string
+        example: "AVAILABLE"
+    responses:
+      200:
+        description: List of seats
+      404:
+        description: Event not found
+    """
     event = Event.query.get(event_id)
 
     if not event:
