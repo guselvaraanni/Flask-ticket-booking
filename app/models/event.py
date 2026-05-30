@@ -9,6 +9,9 @@ class Event(db.Model):
     name = db.Column(db.String(255), nullable=False, index=True)
     date = db.Column(db.DateTime, nullable=False)
     location = db.Column(db.String(255), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    ticket_price = db.Column(db.Float, default=25.0)
+    category = db.Column(db.String(50), default='general')
     total_seats = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -25,6 +28,9 @@ class Event(db.Model):
             'name': self.name,
             'date': self.date.isoformat(),
             'location': self.location,
+            'description': self.description,
+            'ticket_price': self.ticket_price,
+            'category': self.category,
             'total_seats': self.total_seats,
             'created_at': self.created_at.isoformat(),
         }
