@@ -16,7 +16,7 @@ class BookingManager:
         """
         Book a seat for a user with row-level locking.
         
-        This method uses PostgreSQL's SELECT ... FOR UPDATE to lock the seat row,
+        This method uses MySQL InnoDB SELECT ... FOR UPDATE to lock the seat row,
         preventing race conditions when multiple users try to book the same seat.
         
         Args:
@@ -78,7 +78,9 @@ class BookingManager:
         Also uses row-level locking to prevent race conditions.
         """
         try:
-            booking = Booking.query.get(booking_id)
+            # Lock the booking row first so concurrent cancel requests cannot
+            # both pass the existence check and corrupt seat state.
+            booking = Booking.query.with_for_update().filter_by(id=booking_id).first()
             if not booking:
                 return False, "Booking not found", None, 404
 

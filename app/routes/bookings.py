@@ -9,7 +9,7 @@ def create_booking():
     """
     Book a specific seat for a user.
     
-    This endpoint uses PostgreSQL's SELECT ... FOR UPDATE (row-level locking)
+    This endpoint uses MySQL InnoDB SELECT ... FOR UPDATE (row-level locking)
     to prevent race conditions. Only one user can book a seat at a time.
     
     ---
