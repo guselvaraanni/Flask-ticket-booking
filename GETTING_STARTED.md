@@ -3,285 +3,198 @@
 ## Step 1: Prerequisites
 
 Make sure you have installed:
-- Docker: https://docs.docker.com/get-docker/
-- Docker Compose: https://docs.docker.com/compose/install/
-- Git: https://git-scm.com/
+
+* Python 3.8+: https://www.python.org/downloads/
+* MySQL 8.0+: https://dev.mysql.com/downloads/mysql/
+* Git: https://git-scm.com/
 
 Verify installations:
+
 ```bash
-docker --version
-docker-compose --version
+python --version
+mysql --version
 git --version
 ```
 
-## Step 2: Clone/Extract the Project
+## Step 2: Clone the Project
 
 ```bash
-# If from GitHub
 git clone https://github.com/yourusername/flask-booking-api.git
 cd flask-booking-api
-
-# Or extract from zip
-unzip flask-booking-api.zip
-cd flask-booking-api
 ```
 
-## Step 3: Start the Application
+## Step 3: Install Python Dependencies
 
 ```bash
-# Build and start both Flask and PostgreSQL containers
-docker-compose up --build
-
-# On first run, this will:
-# 1. Download Python 3.10 and PostgreSQL 15 images
-# 2. Install dependencies (requirements.txt)
-# 3. Create database tables via SQLAlchemy
-# 4. Start Flask on port 5000
+python -m venv venv
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Linux/macOS
+pip install -r requirements.txt
 ```
 
-You should see output like:
-```
-web-1  | * Running on http://0.0.0.0:5000
-```
+## Step 4: Create the MySQL Database
 
-## Step 4: Test the API
-
-### Option A: Using Swagger UI (Recommended)
-Open your browser and go to:
-```
-http://localhost:5000/apidocs
-```
-
-This shows all endpoints with interactive testing.
-
-### Option B: Using curl
+Log in to MySQL:
 
 ```bash
-# Health check
+mysql -u root -p
+```
+
+Run:
+
+```sql
+CREATE DATABASE IF NOT EXISTS booking_db
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+SHOW DATABASES LIKE 'booking_db';
+```
+
+Or use the project script:
+
+```bash
+mysql -u root -p < scripts/create_database.sql
+```
+
+## Step 5: Configure Environment Variables
+
+```bash
+copy .env.example .env   # Windows
+cp .env.example .env     # Linux/macOS
+```
+
+Edit `.env` and replace `MY_PASSWORD` with your MySQL root password:
+
+```env
+DATABASE_URL=mysql+pymysql://root:MY_PASSWORD@localhost:3306/booking_db?charset=utf8mb4
+FLASK_APP=run.py
+FLASK_ENV=development
+FLASK_DEBUG=True
+```
+
+## Step 6: Start the Application
+
+```bash
+python run.py
+```
+
+You should see:
+
+```
+* Running on http://0.0.0.0:5000
+```
+
+Tables are created automatically on first startup.
+
+## Step 7: Test the API
+
+### Option A: Swagger UI (Recommended)
+
+Open: http://localhost:5000/apidocs
+
+### Option B: curl
+
+```bash
 curl http://localhost:5000/health
 
-# Create an event
 curl -X POST http://localhost:5000/api/events \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "Concert 2024",
-    "date": "2024-06-15T19:00:00",
-    "location": "Madison Square Garden"
-  }'
+  -d "{\"name\": \"Concert 2024\", \"date\": \"2024-06-15T19:00:00\", \"location\": \"Madison Square Garden\"}"
 
-# Create seats (replace 1 with your event ID)
 curl -X POST http://localhost:5000/api/events/1/seats \
   -H "Content-Type: application/json" \
-  -d '{
-    "num_rows": 5,
-    "seats_per_row": 20
-  }'
+  -d "{\"num_rows\": 5, \"seats_per_row\": 20}"
 
-# Book a seat (replace seat_id with an actual seat ID)
 curl -X POST http://localhost:5000/api/bookings \
   -H "Content-Type: application/json" \
-  -d '{
-    "seat_id": 1,
-    "user_id": "user@example.com"
-  }'
+  -d "{\"seat_id\": 1, \"user_id\": \"user@example.com\"}"
 ```
 
-### Option C: Using Postman
+## Step 8: Run the Load Test
 
-1. Download Postman: https://www.postman.com/downloads/
-2. Import the collection from `docs/postman_collection.json` (if included)
-3. Click "Send" on endpoints
-
-## Step 5: Run the Load Test
-
-This test simulates 50 concurrent booking requests to verify row-level locking:
+In a second terminal (with the API still running):
 
 ```bash
-# Make sure docker-compose is still running in another terminal
-
-# Run the load test
 python tests/simulate_load.py
 ```
 
 **Expected output:**
-- 1 booking succeeds (201 Created)
-- 49 bookings fail with conflict (409 Conflict)
-- All requests complete in ~1 second
-- No double bookings!
 
-## Step 6: Verify Concurrency Prevention
+* 1 booking succeeds (201 Created)
+* 50 conflicts (409 Conflict) with 51 concurrent requests
+* `TEST PASSED` and exit code 0
+* Database shows exactly 1 booked seat
 
-Check the database directly (optional):
+## Step 9: Verify Tables in MySQL (Optional)
 
 ```bash
-# Access PostgreSQL inside Docker
-docker exec -it flask-booking-api-db-1 psql -U booking_user -d booking_db
+mysql -u root -p booking_db
+```
 
-# Inside psql:
-SELECT * FROM seats WHERE id = 1;  -- Check seat status
-SELECT COUNT(*) FROM bookings;      -- Count total bookings
+```sql
+SHOW TABLES;
+DESCRIBE events;
+DESCRIBE seats;
+DESCRIBE bookings;
+SELECT * FROM seats WHERE id = 1;
+SELECT COUNT(*) FROM bookings;
 ```
 
 ## Common Issues & Solutions
 
-### Issue: "Connection refused" on port 5000
-**Solution:** Wait 10-15 seconds for services to fully start, then refresh
+### Issue: `ModuleNotFoundError: No module named 'pymysql'`
 
-### Issue: PostgreSQL container won't start
-**Solution:** 
-```bash
-docker-compose down -v
-docker-compose up --build
-```
-The `-v` flag removes volumes (old database data)
+**Solution:** `pip install -r requirements.txt`
 
-### Issue: "ModuleNotFoundError: No module named 'flask'"
-**Solution:** Make sure you're running inside Docker (`docker-compose up`), not locally
+### Issue: `Can't connect to MySQL server`
+
+**Solution:** Start MySQL service and confirm host/port/user/password in `.env`.
+
+### Issue: `Unknown database 'booking_db'`
+
+**Solution:** Run `scripts/create_database.sql` or the `CREATE DATABASE` command above.
+
+### Issue: `.env` not loaded / wrong database URL
+
+**Solution:** Ensure `.env` is in the project root. `run.py` and `app/config.py` call `load_dotenv()`.
 
 ### Issue: Load test times out
-**Solution:** 
-1. Wait for services to fully start
-2. Increase timeout in `tests/simulate_load.py`: `TIMEOUT = 30`
 
-## Project Structure Overview
+**Solution:** Confirm `python run.py` is running. Increase `TIMEOUT` in `tests/simulate_load.py` if needed.
 
-```
-flask-booking-api/
-├── app/                         # Main application code
-│   ├── models/                  # Database entities (Event, Seat, Booking)
-│   ├── routes/                  # HTTP endpoints
-│   ├── services/                # Business logic (row-level locking here!)
-│   ├── __init__.py              # App factory
-│   ├── config.py                # Configuration
-│   └── extensions.py            # Database setup
-├── tests/
-│   └── simulate_load.py         # Concurrent booking test
-├── Dockerfile                   # Container configuration
-├── docker-compose.yml           # Service orchestration
-├── requirements.txt             # Python dependencies
-├── run.py                       # Entry point
-└── README.md                    # Full documentation
-```
+## Key Files to Study
 
-## Key Files to Study (For Learning)
+### Row-Level Locking
 
-### 1. Row-Level Locking Implementation
 **File:** `app/services/booking_mgr.py`
 
-Look for this line:
 ```python
 seat = Seat.query.with_for_update().filter_by(id=seat_id).first()
 ```
 
-This is the **magic line** that prevents race conditions!
+MySQL InnoDB holds this lock until the transaction commits.
 
-### 2. Booking Route
+### Booking Route
+
 **File:** `app/routes/bookings.py`
 
-Shows how to call the booking service and handle different HTTP status codes:
-- 201: Booking successful
-- 409: Seat already booked
-- 404: Seat not found
+* 201: Booking successful
+* 409: Seat already booked
+* 404: Seat not found
 
-### 3. Load Test
+### Load Test
+
 **File:** `tests/simulate_load.py`
 
-Uses Python's `ThreadPoolExecutor` to fire 50 concurrent requests. Shows how to verify your concurrency handling works.
-
-## Docker Commands Reference
-
-```bash
-# Start services
-docker-compose up
-
-# Stop services
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# View logs from specific service
-docker-compose logs -f web
-
-# Connect to Flask container
-docker exec -it flask-booking-api-web-1 bash
-
-# Connect to PostgreSQL
-docker exec -it flask-booking-api-db-1 psql -U booking_user -d booking_db
-
-# Rebuild containers
-docker-compose up --build
-```
-
-## Development Workflow
-
-### Making Changes to Code
-
-1. Edit a Python file (e.g., `app/routes/events.py`)
-2. Docker will automatically reload the Flask app (hot reload enabled)
-3. Refresh your browser or re-run the curl command
-
-### Adding a New Endpoint
-
-1. Create a new route in `app/routes/`
-2. Add docstring with Swagger annotation:
-```python
-@app.route('/api/custom', methods=['GET'])
-def custom_endpoint():
-    """
-    Custom endpoint description.
-    ---
-    responses:
-      200:
-        description: Success
-    """
-    return jsonify({'status': 'ok'}), 200
-```
-3. Restart Flask: `docker-compose restart web`
-4. Check `/apidocs` to see it auto-documented!
+Uses `ThreadPoolExecutor` to fire 51 concurrent requests at the same seat.
 
 ## Interview Preparation
 
-Before your interview, be ready to explain:
-
-1. **The Problem:**
-   - "Race conditions occur when two users book the same seat simultaneously"
-
-2. **The Solution:**
-   - "I use PostgreSQL's `SELECT ... FOR UPDATE` to lock the row at the database level"
-   - Reference: `app/services/booking_mgr.py` line with `.with_for_update()`
-
-3. **How It Works:**
-   - "User A's request locks the seat row"
-   - "User B's request waits"
-   - "User A books and commits, releasing the lock"
-   - "User B's request finally reads the row, sees it's BOOKED, and returns 409 Conflict"
-
-4. **Testing:**
-   - "I created a load test that fires 50 concurrent requests at the same seat"
-   - "Only 1 succeeds with 201 Created, 49 get 409 Conflict"
-   - "This proves no double-booking can occur"
-
-## Next Steps
-
-1. ✅ Run the application locally with Docker
-2. ✅ Create an event and some seats via Swagger UI
-3. ✅ Manually book a seat and verify the seat status changes
-4. ✅ Run the load test to see concurrency in action
-5. ✅ Read through the code, especially `booking_mgr.py`
-6. ✅ Study the README.md "How Concurrency is Handled" section
-7. ✅ Modify the code: add a new field to a model, create a new endpoint
-8. ✅ Deploy to Render.com (optional, but impressive!)
-
-## Getting Help
-
-- **API Documentation:** http://localhost:5000/apidocs
-- **Full Guide:** README.md
-- **Code Comments:** Check docstrings in Python files
-- **Logs:** `docker-compose logs`
+1. **Problem:** Two users book the same seat at the same time.
+2. **Solution:** MySQL InnoDB `SELECT ... FOR UPDATE` via SQLAlchemy `.with_for_update()`.
+3. **Flow:** First transaction locks the row; others wait; winner commits; losers see `BOOKED` and get 409.
+4. **Proof:** Load test with 51 concurrent requests — exactly one success, consistent DB state.
 
 ---
 
-**Happy coding! 🚀**
-
-Remember: The key to interviews is not just the code, but explaining the **design decisions** and **architectural choices**. This project demonstrates your understanding of concurrency, database transactions, and production-grade API design.
+**Happy coding!**
