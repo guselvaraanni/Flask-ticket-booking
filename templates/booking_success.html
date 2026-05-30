@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Your Ticket — TicketFlow{% endblock %}
+{% block body_class %}page-ticket{% endblock %}
+
+{% block content %}
+<section class="section ticket-section">
+  <div class="container container-narrow">
+    <div id="ticketWrap" class="hidden">
+      <div class="ticket-card" id="printableTicket">
+        <div class="ticket-perforation"></div>
+        <div class="ticket-inner">
+          <div class="ticket-header">
+            <span class="ticket-brand">TicketFlow</span>
+            <span class="ticket-status">CONFIRMED</span>
+          </div>
+          <h1 class="ticket-event" id="ticketEvent">—</h1>
+          <p class="ticket-venue" id="ticketVenue">—</p>
+          <div class="ticket-seat-block">
+            <span class="ticket-seat-label">SEAT</span>
+            <span class="ticket-seat-number" id="ticketSeat">—</span>
+          </div>
+          <div class="ticket-details">
+            <div>
+              <span>Booking ID</span>
+              <strong id="ticketBookingId">—</strong>
+            </div>
+            <div>
+              <span>Transaction</span>
+              <strong id="ticketTransaction" class="mono">—</strong>
+            </div>
+            <div>
+              <span>Date</span>
+              <strong id="ticketDate">—</strong>
+            </div>
+            <div>
+              <span>Guest</span>
+              <strong id="ticketGuest">—</strong>
+            </div>
+          </div>
+          <div class="ticket-barcode" aria-hidden="true">
+            <div class="barcode-lines"></div>
+            <span id="ticketBarcodeText">TF-000000</span>
+          </div>
+        </div>
+      </div>
+      <div class="ticket-actions no-print">
+        <button type="button" class="btn btn-primary" id="downloadTicketBtn">Download Ticket</button>
+        <button type="button" class="btn btn-outline" onclick="window.print()">Print Ticket</button>
+        <a href="{{ url_for('pages.events_page') }}" class="btn btn-ghost">Book Another</a>
+        <a href="{{ url_for('pages.cancel_page') }}" class="btn btn-ghost" id="cancelLink">Cancel Booking</a>
+      </div>
+    </div>
+    <div id="ticketEmpty" class="empty-state">
+      <h3>No ticket found</h3>
+      <p>Complete a booking from an event seat map first.</p>
+      <a href="{{ url_for('pages.events_page') }}" class="btn btn-primary">Browse Events</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>document.addEventListener('DOMContentLoaded', TicketApp.initTicketPage);</script>
+{% endblock %}

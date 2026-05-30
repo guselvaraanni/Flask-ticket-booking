@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Cancel Booking — TicketFlow{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-sm">
+  <div class="container">
+    <h1>Cancel Booking</h1>
+    <p>Search for your booking, review the details, then confirm cancellation. Your seat will become available again.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container container-narrow">
+    <div class="card cancel-search-card">
+      <h2>Find your booking</h2>
+      <p class="form-hint">Enter the Booking ID shown on your ticket confirmation.</p>
+      <div class="cancel-search-row">
+        <div class="form-group cancel-search-input">
+          <label for="bookingId">Booking ID</label>
+          <input type="number" id="bookingId" class="form-input" placeholder="e.g. 5" min="1" inputmode="numeric">
+        </div>
+        <button type="button" class="btn btn-primary" id="searchBookingBtn">Search</button>
+      </div>
+      <div id="cancelSearchError" class="alert alert-error hidden"></div>
+    </div>
+
+    <div id="cancelDetailsCard" class="card cancel-details-card hidden">
+      <div class="cancel-details-header">
+        <h2 id="cancelDetailsTitle">Booking #—</h2>
+        <span class="badge badge-active" id="cancelStatusBadge">Active</span>
+      </div>
+      <dl class="cancel-details-list">
+        <dt>Event</dt>
+        <dd id="detailEventName">—</dd>
+        <dt>Seat</dt>
+        <dd id="detailSeatNumber" class="highlight">—</dd>
+        <dt>Venue</dt>
+        <dd id="detailVenue">—</dd>
+        <dt>Transaction</dt>
+        <dd id="detailTransaction" class="mono">—</dd>
+        <dt>Guest</dt>
+        <dd id="detailGuest">—</dd>
+        <dt>Booked on</dt>
+        <dd id="detailBookedAt">—</dd>
+      </dl>
+      <button type="button" class="btn btn-danger btn-block btn-lg" id="confirmCancelBtn" disabled>
+        Cancel Booking
+      </button>
+    </div>
+
+    <div id="cancelSuccessCard" class="card cancel-success-card hidden">
+      <div class="success-icon-inline">✓</div>
+      <h2>Booking cancelled successfully</h2>
+      <p id="cancelSuccessMessage">Your seat is now available again.</p>
+      <a href="{{ url_for('pages.events_page') }}" class="btn btn-primary">Browse Events</a>
+    </div>
+  </div>
+</section>
+
+<div id="cancelConfirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="modal-content card">
+    <h2 id="modalTitle">Confirm cancellation</h2>
+    <p id="modalMessage">Are you sure you want to cancel this booking?</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" id="modalCancelBtn">Keep Booking</button>
+      <button type="button" class="btn btn-danger" id="modalConfirmBtn">Yes, Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>document.addEventListener('DOMContentLoaded', TicketApp.initCancelPage);</script>
+{% endblock %}

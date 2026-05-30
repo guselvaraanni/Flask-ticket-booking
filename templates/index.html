@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Book Tickets — TicketFlow{% endblock %}
+
+{% block content %}
+<section class="hero hero-home">
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow">Portfolio Project</span>
+      <h1>Book tickets with <span class="text-gradient">zero double-bookings</span></h1>
+      <p class="hero-lead">
+        A real ticket booking experience powered by a concurrency-safe Flask API.
+        MySQL InnoDB row locks ensure only one customer can claim each seat.
+      </p>
+      <div class="hero-actions">
+        <a href="#featured-events" class="btn btn-primary btn-lg" id="browseEventsBtn">Browse Events</a>
+        <a href="{{ url_for('pages.concurrency_demo_page') }}" class="btn btn-ghost btn-lg">See How It Works</a>
+      </div>
+    </div>
+    <div class="hero-visual card">
+      <div class="mini-ticket">
+        <div class="mini-ticket-header">LIVE NOW</div>
+        <h3>Music Concert</h3>
+        <p>Seat <strong>C12</strong> &middot; <strong>{{ (799)|inr }}</strong></p>
+        <div class="mini-seat-row">
+          <span class="seat-dot available"></span>
+          <span class="seat-dot available"></span>
+          <span class="seat-dot selected"></span>
+          <span class="seat-dot booked"></span>
+          <span class="seat-dot available"></span>
+        </div>
+        <p class="mini-caption">51 concurrent requests → 1 success, 50 conflicts</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="stats-grid" id="homeStatsGrid">
+      <div class="stat-card">
+        <span class="stat-label">Events</span>
+        <span class="stat-value" id="homeStatEvents">{{ summary.total_events }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total Seats</span>
+        <span class="stat-value" id="homeStatSeats">{{ summary.total_seats }}</span>
+      </div>
+      <div class="stat-card stat-success">
+        <span class="stat-label">Available</span>
+        <span class="stat-value" id="homeStatAvailable">{{ summary.total_available }}</span>
+      </div>
+      <div class="stat-card stat-danger">
+        <span class="stat-label">Booked</span>
+        <span class="stat-value" id="homeStatBooked">{{ summary.total_booked }}</span>
+      </div>
+      <div class="stat-card stat-accent">
+        <span class="stat-label">Occupancy</span>
+        <span class="stat-value" id="homeStatOccupancy">{{ summary.occupancy_rate }}%</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt" id="featured-events">
+  <div class="container">
+    <div class="section-header">
+      <h2>Book your next experience</h2>
+      <a href="{{ url_for('pages.events_page') }}" class="link-arrow">View all events</a>
+    </div>
+    <div id="homeEventsLoading" class="loading-inline hidden">
+      <div class="spinner spinner-sm"></div>
+      <span>Loading events...</span>
+    </div>
+    <div class="events-grid" id="homeEventsGrid">
+      {% for event in events %}
+      {% include 'partials/event_card.html' %}
+      {% endfor %}
+    </div>
+    <div id="homeEventsEmpty" class="empty-state {% if events %}hidden{% endif %}">
+      <div class="empty-icon">🎟️</div>
+      <h3>No events to show yet</h3>
+      <p>Visit <a href="{{ url_for('pages.concurrency_demo_page') }}">How it works</a> to load sample events for your demo.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container trust-grid">
+    <article class="trust-card">
+      <h3>Row-level locking</h3>
+      <p><code>SELECT ... FOR UPDATE</code> on the seat row before every booking.</p>
+    </article>
+    <article class="trust-card">
+      <h3>Unique constraint</h3>
+      <p>One booking per seat enforced at the database layer.</p>
+    </article>
+    <article class="trust-card">
+      <h3>Load tested</h3>
+      <p><code>ThreadPoolExecutor</code> with 50+ simultaneous booking attempts.</p>
+    </article>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>document.addEventListener('DOMContentLoaded', TicketApp.initHomePage);</script>
+{% endblock %}

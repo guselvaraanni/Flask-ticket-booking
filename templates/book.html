@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Book Seat — {{ event.name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="container">
+    <nav class="breadcrumb">
+      <a href="{{ url_for('pages.events_page') }}">Events</a>
+      <span>/</span>
+      <a href="{{ url_for('pages.event_detail_page', event_id=event.id) }}">{{ event.name }}</a>
+      <span>/</span>
+      <span>Book</span>
+    </nav>
+    <h1>Confirm Booking</h1>
+    <p>Complete your reservation. The system uses row-level locking to prevent double-booking.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container container-narrow">
+    <div class="booking-layout">
+      <div class="card">
+        <h2>Booking Summary</h2>
+        <dl class="summary-list" id="bookingSummary">
+          <dt>Event</dt>
+          <dd>{{ event.name }}</dd>
+          <dt>Location</dt>
+          <dd>{{ event.location or 'TBA' }}</dd>
+          <dt>Seat</dt>
+          <dd id="summarySeatNumber">—</dd>
+          <dt>Seat ID</dt>
+          <dd id="summarySeatId">—</dd>
+          <dt>Status</dt>
+          <dd><span class="badge badge-success">Available</span></dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2>Your Details</h2>
+        <form id="bookingForm" novalidate data-event-id="{{ event.id }}" data-event-name="{{ event.name }}">
+          <div class="form-group">
+            <label for="userId">User ID / Email</label>
+            <input type="text" id="userId" name="user_id" class="form-input"
+                   placeholder="user@example.com" required autocomplete="email">
+            <span class="form-hint">Used to identify the booking record.</span>
+          </div>
+          <input type="hidden" id="seatId" name="seat_id" value="">
+          <div id="bookingError" class="alert alert-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block" id="confirmBookingBtn">
+            Confirm Booking
+          </button>
+          <a href="{{ url_for('pages.event_detail_page', event_id=event.id) }}" class="btn btn-outline btn-block">Back to Seats</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    TicketApp.initBookPage({{ event.id }}, {{ event.name | tojson }});
+  });
+</script>
+{% endblock %}

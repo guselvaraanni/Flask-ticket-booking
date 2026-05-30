@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}How Concurrency Works — TicketFlow{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Interview Demo</span>
+    <h1>Why this project exists</h1>
+    <p>Two users clicking “Book” on the same seat at the same millisecond must not both succeed. Here is exactly how we prevent that.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="pillars">
+      <article class="pillar-card">
+        <h3>SELECT ... FOR UPDATE</h3>
+        <p>MySQL InnoDB acquires an exclusive row lock on the seat before checking availability.</p>
+        <code class="code-block">seat = Seat.query.with_for_update().filter_by(id=seat_id).first()</code>
+      </article>
+      <article class="pillar-card">
+        <h3>Unique constraint</h3>
+        <p><code>bookings.seat_id</code> is unique — a second insert fails even if application logic regressed.</p>
+      </article>
+      <article class="pillar-card">
+        <h3>ThreadPoolExecutor</h3>
+        <p><code>tests/simulate_load.py</code> fires 51 concurrent HTTP requests. Exactly one returns 201.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="container">
+    <h2 class="section-title">Concurrent booking flow</h2>
+    <div class="flow-diagram">
+      <div class="flow-column">
+        <h4>Request 1 (User A)</h4>
+        <div class="flow-step flow-primary">POST /api/bookings</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step">SELECT ... FOR UPDATE</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step flow-success">Lock acquired</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step">status = BOOKED + INSERT booking</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step flow-success">COMMIT → 201 Created</div>
+      </div>
+      <div class="flow-divider">
+        <span>same seat</span>
+      </div>
+      <div class="flow-column">
+        <h4>Request 2 (User B)</h4>
+        <div class="flow-step flow-primary">POST /api/bookings</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step flow-wait">WAIT for lock...</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step">Lock acquired — reads BOOKED</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step flow-danger">409 Conflict</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Try it yourself</h2>
+    <div class="demo-actions card">
+      <ol class="demo-steps">
+        <li>Load demo data and open <strong>Movie Night</strong></li>
+        <li>Book seat <strong>A12</strong> in one browser tab</li>
+        <li>Try booking <strong>A12</strong> again — you will see a 409 conflict</li>
+        <li>Run <code>python tests/simulate_load.py</code> for 51 concurrent requests on one seat</li>
+        <li>Run <code>pytest tests/test_concurrency.py -v</code> for automated proof</li>
+      </ol>
+      <div class="hero-actions">
+        <button type="button" class="btn btn-accent hidden" id="concurrencyDemoBtn">Load Demo Data</button>
+        <p id="demoDataStatus" class="demo-status hidden"></p>
+        <a href="{{ url_for('pages.events_page') }}" class="btn btn-primary">Browse Events</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    TicketApp.initConcurrencyDemoPage();
+  });
+</script>
+{% endblock %}

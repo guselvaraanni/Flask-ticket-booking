@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Events — TicketFlow{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-tight" id="events-top">
+  <div class="container">
+    <h1>Choose your event</h1>
+    <p>Select a show, pick your seat on the map, and book in seconds.</p>
+  </div>
+</section>
+
+<section class="section section-tight-top">
+  <div class="container">
+    <div id="eventsLoading" class="loading-inline">
+      <div class="spinner spinner-sm"></div>
+      <span>Finding the best seats for you...</span>
+    </div>
+    <div id="eventsError" class="alert alert-error hidden"></div>
+    <div id="eventsGrid" class="events-grid"></div>
+    <div id="eventsEmpty" class="empty-state hidden">
+      <div class="empty-icon">🎬</div>
+      <h3>No events available</h3>
+      <p>Sample events can be loaded from the <a href="{{ url_for('pages.concurrency_demo_page') }}">How it works</a> page.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>document.addEventListener('DOMContentLoaded', TicketApp.initEventsPage);</script>
+{% endblock %}

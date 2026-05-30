@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Statistics — TicketFlow{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-sm">
+  <div class="container">
+    <h1>Live occupancy</h1>
+    <p>Real-time seat statistics across all events.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div id="statsOverview" class="stats-grid stats-grid-large hidden">
+      <div class="stat-card"><span class="stat-label">Total Events</span><span class="stat-value" id="overviewEvents">—</span></div>
+      <div class="stat-card"><span class="stat-label">Total Seats</span><span class="stat-value" id="overviewTotal">—</span></div>
+      <div class="stat-card stat-success"><span class="stat-label">Available</span><span class="stat-value" id="overviewAvailable">—</span></div>
+      <div class="stat-card stat-danger"><span class="stat-label">Booked</span><span class="stat-value" id="overviewBooked">—</span></div>
+      <div class="stat-card stat-accent"><span class="stat-label">Occupancy</span><span class="stat-value" id="overviewOccupancy">—</span></div>
+    </div>
+
+    <div class="card filter-card">
+      <label for="eventSelect">Filter by event</label>
+      <select id="eventSelect" class="form-input">
+        <option value="">— All events (overview) —</option>
+        {% for ev in events %}
+        <option value="{{ ev.id }}" {% if event is defined and event.id == ev.id %}selected{% endif %}>{{ ev.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="statsLoading" class="loading-inline hidden">
+      <div class="spinner spinner-sm"></div>
+    </div>
+    <div id="statsError" class="alert alert-error hidden"></div>
+    <div id="statsEmpty" class="empty-state {% if events %}hidden{% endif %}">
+      <h3>No statistics yet</h3>
+      <p>No events in the system. Load sample data from <a href="{{ url_for('pages.concurrency_demo_page') }}">How it works</a>.</p>
+    </div>
+
+    <div id="statsContent" class="{% if not (event is defined and stats is defined) %}hidden{% endif %}">
+      <div class="stats-grid stats-grid-large">
+        <div class="stat-card"><span class="stat-label">Total Seats</span><span class="stat-value" id="statTotal">{% if stats is defined %}{{ stats.total_seats }}{% else %}—{% endif %}</span></div>
+        <div class="stat-card stat-success"><span class="stat-label">Available</span><span class="stat-value" id="statAvailable">{% if stats is defined %}{{ stats.available_seats }}{% else %}—{% endif %}</span></div>
+        <div class="stat-card stat-danger"><span class="stat-label">Booked</span><span class="stat-value" id="statBooked">{% if stats is defined %}{{ stats.booked_seats }}{% else %}—{% endif %}</span></div>
+        <div class="stat-card stat-accent"><span class="stat-label">Occupancy</span><span class="stat-value" id="statOccupancy">{% if stats is defined %}{{ '%.1f'|format(stats.occupancy_rate) }}%{% else %}—{% endif %}</span></div>
+      </div>
+
+      <div class="card chart-card">
+        <h2>Seat distribution</h2>
+        <div class="chart-bars" id="seatChart">
+          <div class="chart-row">
+            <span class="chart-label">Available</span>
+            <div class="chart-track"><div class="chart-fill chart-fill-success" id="chartAvailable"></div></div>
+            <span class="chart-value" id="chartAvailableVal">0</span>
+          </div>
+          <div class="chart-row">
+            <span class="chart-label">Booked</span>
+            <div class="chart-track"><div class="chart-fill chart-fill-danger" id="chartBooked"></div></div>
+            <span class="chart-value" id="chartBookedVal">0</span>
+          </div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="occupancyBar" style="width:{% if stats is defined %}{{ stats.occupancy_rate }}{% else %}0{% endif %}%"></div></div>
+        <p class="occupancy-caption" id="occupancyCaption">{% if stats is defined and event is defined %}{{ stats.booked_seats }} of {{ stats.total_seats }} seats booked for {{ event.name }}{% else %}Select an event{% endif %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    TicketApp.initStatsPage({% if event is defined %}{{ event.id }}{% else %}null{% endif %});
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }} — Select Seats{% endblock %}
+{% block body_class %}page-booking{% endblock %}
+
+{% block content %}
+<section class="booking-header">
+  <div class="container">
+    <nav class="breadcrumb">
+      <a href="{{ url_for('pages.events_page') }}">Events</a>
+      <span>/</span>
+      <span>{{ event.name }}</span>
+    </nav>
+    <div class="booking-header-grid">
+      <div>
+        <span class="badge badge-{{ event.category or 'general' }}">{{ (event.category or 'event')|title }}</span>
+        <h1>{{ event.name }}</h1>
+        <p class="booking-meta">{{ event.location or 'Venue TBA' }} &middot; {{ event.date.strftime('%B %d, %Y · %I:%M %p') if event.date else '' }}</p>
+        {% if event.description %}
+        <p class="booking-desc">{{ event.description }}</p>
+        {% endif %}
+      </div>
+      <div class="booking-header-stats">
+        <div><span>Available</span><strong id="hdrAvailable">{{ stats.available_seats }}</strong></div>
+        <div><span>Booked</span><strong id="hdrBooked">{{ stats.booked_seats }}</strong></div>
+        <div><span>From</span><strong>{{ (event.ticket_price or 499)|inr }}</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-compact">
+  <div class="container">
+    <div class="cinema-layout">
+      <div class="cinema-main card">
+        <div class="legend-inline">
+          <span><i class="seat-dot available"></i> Available</span>
+          <span><i class="seat-dot booked"></i> Booked</span>
+          <span><i class="seat-dot selected"></i> Selected</span>
+          <span><i class="seat-dot disabled"></i> Unavailable</span>
+        </div>
+        <div class="screen">SCREEN</div>
+        <div id="seatsLoading" class="loading-inline">
+          <div class="spinner spinner-sm"></div>
+          <span>Loading seat map...</span>
+        </div>
+        <div id="seatsError" class="alert alert-error hidden"></div>
+        <div class="cinema-scroll-wrap" aria-label="Seat map (scroll horizontally on small screens)">
+          <div id="seatGrid" class="cinema-grid" data-event-id="{{ event.id }}"></div>
+        </div>
+        <p class="scroll-hint">Swipe left/right to see all seats on smaller screens.</p>
+      </div>
+
+      <aside class="booking-panel card" id="bookingPanel">
+        <h2>Your Ticket</h2>
+        <p class="panel-hint" id="panelHint">Select an available seat on the map</p>
+        <dl class="panel-summary hidden" id="panelSummary">
+          <dt>Event</dt>
+          <dd id="panelEventName">{{ event.name }}</dd>
+          <dt>Venue</dt>
+          <dd id="panelVenue">{{ event.location or 'TBA' }}</dd>
+          <dt>Seat</dt>
+          <dd id="panelSeat" class="highlight">—</dd>
+          <dt>Price</dt>
+          <dd id="panelPrice">{{ (event.ticket_price or 499)|inr }}</dd>
+        </dl>
+        <form id="inlineBookingForm" class="hidden">
+          <div class="form-group">
+            <label for="userId">Email / User ID</label>
+            <input type="text" id="userId" class="form-input" placeholder="you@email.com" required>
+          </div>
+          <input type="hidden" id="seatId" value="">
+          <div id="bookingError" class="alert alert-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block btn-lg" id="bookTicketBtn">Book Ticket</button>
+        </form>
+      </aside>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    TicketApp.initCinemaBookingPage({
+      id: {{ event.id }},
+      name: {{ event.name | tojson }},
+      location: {{ (event.location or '') | tojson }},
+      ticket_price: {{ event.ticket_price or 25 }},
+      category: {{ (event.category or 'general') | tojson }}
+    });
+  });
+</script>
+{% endblock %}
