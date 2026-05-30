@@ -1,11 +1,14 @@
 import os
-from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class Config:
     """Base configuration"""
     SQLALCHEMY_DATABASE_URI = os.getenv(
         'DATABASE_URL',
-        'postgresql://booking_user:booking_password@localhost:5432/booking_db'
+        'mysql+pymysql://root:password@localhost:3306/booking_db?charset=utf8mb4'
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -16,20 +19,25 @@ class Config:
     JSON_SORT_KEYS = False
     PROPAGATE_EXCEPTIONS = True
 
+
 class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
     TESTING = False
 
+
 class TestingConfig(Config):
     """Testing configuration"""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_ENGINE_OPTIONS = {}
+
 
 class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     TESTING = False
+
 
 config_by_name = {
     'development': DevelopmentConfig,
