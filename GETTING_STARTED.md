@@ -1,200 +1,133 @@
-# Getting Started Guide
+# Getting Started — TicketFlow
 
-## Step 1: Prerequisites
+Quick setup for the **FastAPI + PostgreSQL** ticket booking application.
 
-Make sure you have installed:
+## Prerequisites
 
-* Python 3.8+: https://www.python.org/downloads/
-* MySQL 8.0+: https://dev.mysql.com/downloads/mysql/
-* Git: https://git-scm.com/
+* Python 3.9+ (3.8 may work; 3.9+ recommended)
+* PostgreSQL 14+: https://www.postgresql.org/download/
 
-Verify installations:
+Verify:
 
 ```bash
 python --version
-mysql --version
-git --version
+psql --version
 ```
 
-## Step 2: Clone the Project
+## Step 1: Clone and enter the project
 
 ```bash
-git clone https://github.com/yourusername/flask-booking-api.git
-cd flask-booking-api
+git clone https://github.com/yourusername/ticketflow-booking.git
+cd Flask-ticket-booking
 ```
 
-## Step 3: Install Python Dependencies
+## Step 2: Virtual environment
 
 ```bash
 python -m venv venv
 venv\Scripts\activate          # Windows
-# source venv/bin/activate     # Linux/macOS
+# source venv/bin/activate     # macOS / Linux
 pip install -r requirements.txt
 ```
 
-## Step 4: Create the MySQL Database
+## Step 3: PostgreSQL database and user
 
-Log in to MySQL:
+Option A — SQL script (as superuser):
 
 ```bash
-mysql -u root -p
+psql -U postgres -f scripts/create_database.sql
 ```
 
-Run:
+Option B — manual:
 
 ```sql
-CREATE DATABASE IF NOT EXISTS booking_db
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-SHOW DATABASES LIKE 'booking_db';
+CREATE USER booking_user WITH PASSWORD 'booking_pass';
+CREATE DATABASE booking_db OWNER booking_user ENCODING 'UTF8';
+GRANT ALL PRIVILEGES ON DATABASE booking_db TO booking_user;
 ```
 
-Or use the project script:
+## Step 4: Environment variables
 
 ```bash
-mysql -u root -p < scripts/create_database.sql
+copy .env.example .env         # Windows
+# cp .env.example .env         # macOS / Linux
 ```
 
-## Step 5: Configure Environment Variables
-
-```bash
-copy .env.example .env   # Windows
-cp .env.example .env     # Linux/macOS
-```
-
-Edit `.env` and replace `MY_PASSWORD` with your MySQL root password:
+Edit `.env`:
 
 ```env
-DATABASE_URL=mysql+pymysql://root:MY_PASSWORD@localhost:3306/booking_db?charset=utf8mb4
-FLASK_APP=run.py
-FLASK_ENV=development
-FLASK_DEBUG=True
+DATABASE_URL=postgresql+psycopg2://booking_user:booking_pass@localhost:5432/booking_db
+APP_ENV=development
+DEBUG=true
+HOST=0.0.0.0
+PORT=8000
 ```
 
-## Step 6: Start the Application
+## Step 5: Seed demo data
+
+```bash
+python seed_data.py
+# Or reset:
+python seed_data.py --reset
+```
+
+## Step 6: Run the application
 
 ```bash
 python run.py
 ```
 
-You should see:
-
-```
-* Running on http://0.0.0.0:5000
-```
-
-Tables are created automatically on first startup.
-
-## Step 7: Test the API
-
-### Option A: Swagger UI (Recommended)
-
-Open: http://localhost:5000/apidocs
-
-### Option B: curl
+Or with Uvicorn directly:
 
 ```bash
-curl http://localhost:5000/health
-
-curl -X POST http://localhost:5000/api/events \
-  -H "Content-Type: application/json" \
-  -d "{\"name\": \"Concert 2024\", \"date\": \"2024-06-15T19:00:00\", \"location\": \"Madison Square Garden\"}"
-
-curl -X POST http://localhost:5000/api/events/1/seats \
-  -H "Content-Type: application/json" \
-  -d "{\"num_rows\": 5, \"seats_per_row\": 20}"
-
-curl -X POST http://localhost:5000/api/bookings \
-  -H "Content-Type: application/json" \
-  -d "{\"seat_id\": 1, \"user_id\": \"user@example.com\"}"
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Step 8: Run the Load Test
+Open:
 
-In a second terminal (with the API still running):
+| URL | Purpose |
+|-----|---------|
+| http://localhost:8000 | Web UI |
+| http://localhost:8000/docs | Swagger (OpenAPI) |
+| http://localhost:8000/health | Health check |
+
+## Step 7: Run tests
 
 ```bash
-python tests/simulate_load.py
+pytest tests/ -v
 ```
 
-**Expected output:**
+## Step 8: Load test (optional)
 
-* 1 booking succeeds (201 Created)
-* 50 conflicts (409 Conflict) with 51 concurrent requests
-* `TEST PASSED` and exit code 0
-* Database shows exactly 1 booked seat
+Terminal 1: `python run.py`  
+Terminal 2: `python tests/simulate_load.py`
 
-## Step 9: Verify Tables in MySQL (Optional)
+Expected: **1** success (201), **50** conflicts (409) for 51 concurrent bookings on one seat.
 
-```bash
-mysql -u root -p booking_db
-```
+## Concurrency model
 
-```sql
-SHOW TABLES;
-DESCRIBE events;
-DESCRIBE seats;
-DESCRIBE bookings;
-SELECT * FROM seats WHERE id = 1;
-SELECT COUNT(*) FROM bookings;
-```
-
-## Common Issues & Solutions
-
-### Issue: `ModuleNotFoundError: No module named 'pymysql'`
-
-**Solution:** `pip install -r requirements.txt`
-
-### Issue: `Can't connect to MySQL server`
-
-**Solution:** Start MySQL service and confirm host/port/user/password in `.env`.
-
-### Issue: `Unknown database 'booking_db'`
-
-**Solution:** Run `scripts/create_database.sql` or the `CREATE DATABASE` command above.
-
-### Issue: `.env` not loaded / wrong database URL
-
-**Solution:** Ensure `.env` is in the project root. `run.py` and `app/config.py` call `load_dotenv()`.
-
-### Issue: Load test times out
-
-**Solution:** Confirm `python run.py` is running. Increase `TIMEOUT` in `tests/simulate_load.py` if needed.
-
-## Key Files to Study
-
-### Row-Level Locking
-
-**File:** `app/services/booking_mgr.py`
+PostgreSQL uses `SELECT ... FOR UPDATE` inside a transaction:
 
 ```python
-seat = Seat.query.with_for_update().filter_by(id=seat_id).first()
+seat = session.query(Seat).with_for_update().filter_by(id=seat_id).first()
 ```
 
-MySQL InnoDB holds this lock until the transaction commits.
+The row lock is held until `commit()`, so only one booking can succeed per seat.
 
-### Booking Route
+## Troubleshooting
 
-**File:** `app/routes/bookings.py`
+### `ModuleNotFoundError: No module named 'psycopg2'`
 
-* 201: Booking successful
-* 409: Seat already booked
-* 404: Seat not found
+```bash
+pip install psycopg2-binary
+```
 
-### Load Test
+### Cannot connect to PostgreSQL
 
-**File:** `tests/simulate_load.py`
+* Confirm PostgreSQL service is running
+* Check `DATABASE_URL` host, port, user, password, database name
+* Ensure `booking_user` has privileges on `booking_db`
 
-Uses `ThreadPoolExecutor` to fire 51 concurrent requests at the same seat.
+### Port already in use
 
-## Interview Preparation
-
-1. **Problem:** Two users book the same seat at the same time.
-2. **Solution:** MySQL InnoDB `SELECT ... FOR UPDATE` via SQLAlchemy `.with_for_update()`.
-3. **Flow:** First transaction locks the row; others wait; winner commits; losers see `BOOKED` and get 409.
-4. **Proof:** Load test with 51 concurrent requests — exactly one success, consistent DB state.
-
----
-
-**Happy coding!**
+Change `PORT` in `.env` or run: `uvicorn app.main:app --port 8001`
