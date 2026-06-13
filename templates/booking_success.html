@@ -46,14 +46,14 @@
       <div class="ticket-actions no-print">
         <button type="button" class="btn btn-primary" id="downloadTicketBtn">Download Ticket</button>
         <button type="button" class="btn btn-outline" onclick="window.print()">Print Ticket</button>
-        <a href="{{ url_for('pages.events_page') }}" class="btn btn-ghost">Book Another</a>
-        <a href="{{ url_for('pages.cancel_page') }}" class="btn btn-ghost" id="cancelLink">Cancel Booking</a>
+        <a href="{{ request.url_for('events') }}" class="btn btn-ghost">Book Another</a>
+        <a href="{{ request.url_for('cancel') }}" class="btn btn-ghost" id="cancelLink">Cancel Booking</a>
       </div>
     </div>
     <div id="ticketEmpty" class="empty-state">
       <h3>No ticket found</h3>
       <p>Complete a booking from an event seat map first.</p>
-      <a href="{{ url_for('pages.events_page') }}" class="btn btn-primary">Browse Events</a>
+      <a href="{{ request.url_for('events') }}" class="btn btn-primary">Browse Events</a>
     </div>
   </div>
 </section>

@@ -8,12 +8,12 @@
       <span class="eyebrow">Portfolio Project</span>
       <h1>Book tickets with <span class="text-gradient">zero double-bookings</span></h1>
       <p class="hero-lead">
-        A real ticket booking experience powered by a concurrency-safe Flask API.
-        MySQL InnoDB row locks ensure only one customer can claim each seat.
+        A real ticket booking experience powered by a concurrency-safe FastAPI backend.
+        PostgreSQL row locks ensure only one customer can claim each seat.
       </p>
       <div class="hero-actions">
         <a href="#featured-events" class="btn btn-primary btn-lg" id="browseEventsBtn">Browse Events</a>
-        <a href="{{ url_for('pages.concurrency_demo_page') }}" class="btn btn-ghost btn-lg">See How It Works</a>
+        <a href="{{ request.url_for('concurrency_demo') }}" class="btn btn-ghost btn-lg">See How It Works</a>
       </div>
     </div>
     <div class="hero-visual card">
@@ -65,7 +65,7 @@
   <div class="container">
     <div class="section-header">
       <h2>Book your next experience</h2>
-      <a href="{{ url_for('pages.events_page') }}" class="link-arrow">View all events</a>
+      <a href="{{ request.url_for('events') }}" class="link-arrow">View all events</a>
     </div>
     <div id="homeEventsLoading" class="loading-inline hidden">
       <div class="spinner spinner-sm"></div>
@@ -79,7 +79,7 @@
     <div id="homeEventsEmpty" class="empty-state {% if events %}hidden{% endif %}">
       <div class="empty-icon">🎟️</div>
       <h3>No events to show yet</h3>
-      <p>Visit <a href="{{ url_for('pages.concurrency_demo_page') }}">How it works</a> to load sample events for your demo.</p>
+      <p>Visit <a href="{{ request.url_for('concurrency_demo') }}">How it works</a> to load sample events for your demo.</p>
     </div>
   </div>
 </section>

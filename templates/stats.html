@@ -35,7 +35,7 @@
     <div id="statsError" class="alert alert-error hidden"></div>
     <div id="statsEmpty" class="empty-state {% if events %}hidden{% endif %}">
       <h3>No statistics yet</h3>
-      <p>No events in the system. Load sample data from <a href="{{ url_for('pages.concurrency_demo_page') }}">How it works</a>.</p>
+      <p>No events in the system. Load sample data from <a href="{{ request.url_for('concurrency_demo') }}">How it works</a>.</p>
     </div>
 
     <div id="statsContent" class="{% if not (event is defined and stats is defined) %}hidden{% endif %}">

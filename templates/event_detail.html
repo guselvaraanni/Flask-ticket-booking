@@ -6,7 +6,7 @@
 <section class="booking-header">
   <div class="container">
     <nav class="breadcrumb">
-      <a href="{{ url_for('pages.events_page') }}">Events</a>
+      <a href="{{ request.url_for('events') }}">Events</a>
       <span>/</span>
       <span>{{ event.name }}</span>
     </nav>

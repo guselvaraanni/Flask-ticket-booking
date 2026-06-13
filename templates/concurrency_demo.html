@@ -15,7 +15,7 @@
     <div class="pillars">
       <article class="pillar-card">
         <h3>SELECT ... FOR UPDATE</h3>
-        <p>MySQL InnoDB acquires an exclusive row lock on the seat before checking availability.</p>
+        <p>PostgreSQL acquires an exclusive row lock on the seat before checking availability.</p>
         <code class="code-block">seat = Seat.query.with_for_update().filter_by(id=seat_id).first()</code>
       </article>
       <article class="pillar-card">
@@ -77,7 +77,7 @@
       <div class="hero-actions">
         <button type="button" class="btn btn-accent hidden" id="concurrencyDemoBtn">Load Demo Data</button>
         <p id="demoDataStatus" class="demo-status hidden"></p>
-        <a href="{{ url_for('pages.events_page') }}" class="btn btn-primary">Browse Events</a>
+        <a href="{{ request.url_for('events') }}" class="btn btn-primary">Browse Events</a>
       </div>
     </div>
   </div>
