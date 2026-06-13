@@ -9,11 +9,12 @@ Usage:
 
 import argparse
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from app import create_app
+from app.database import SessionLocal, init_db
 from app.demo_seed import seed_database
 
 
@@ -31,17 +32,15 @@ def main():
     )
     args = parser.parse_args()
 
-    app = create_app(os.getenv('FLASK_ENV', 'development'))
+    init_db()
 
-    with app.app_context():
+    with SessionLocal() as session:
         result = seed_database(
+            session,
             reset=args.reset,
             include_sample_bookings=not args.no_bookings,
         )
-
-    print('Seed complete:')
-    for key, value in result.items():
-        print(f'  {key}: {value}')
+        print(result)
 
 
 if __name__ == '__main__':
