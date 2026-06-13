@@ -1,193 +1,106 @@
-from flask import Blueprint, request, jsonify
 from datetime import datetime
-from app.extensions import db
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 from app.models import Event, Seat
 
-events_bp = Blueprint('events', __name__, url_prefix='/api/events')
+router = APIRouter(prefix='/api/events', tags=['events'])
 
-@events_bp.route('', methods=['POST'])
-def create_event():
-    """
-    Create a new event.
-    ---
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          properties:
-            name:
-              type: string
-              example: "Taylor Swift Concert"
-            date:
-              type: string
-              format: date-time
-              example: "2024-06-15T19:00:00"
-            location:
-              type: string
-              example: "Madison Square Garden"
-    responses:
-      201:
-        description: Event created successfully
-      400:
-        description: Invalid input
-    """
-    data = request.get_json()
 
-    if not data or not data.get('name') or not data.get('date'):
-        return jsonify({'error': 'Missing required fields: name, date'}), 400
+class EventCreate(BaseModel):
+    name: str
+    date: str
+    location: str = ''
 
+
+class SeatBulkCreate(BaseModel):
+    num_rows: int = 10
+    seats_per_row: int = 10
+
+
+@router.post('', status_code=201)
+def create_event(payload: EventCreate, db: Session = Depends(get_db)):
     try:
-        event_date = datetime.fromisoformat(data['date'])
+        event_date = datetime.fromisoformat(payload.date)
     except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid date format. Use ISO format: YYYY-MM-DDTHH:MM:SS'}), 400
+        raise HTTPException(
+            status_code=400,
+            detail='Invalid date format. Use ISO format: YYYY-MM-DDTHH:MM:SS',
+        )
 
-    event = Event(
-        name=data['name'],
-        date=event_date,
-        location=data.get('location', '')
-    )
-
-    db.session.add(event)
-    db.session.commit()
-
-    return jsonify(event.to_dict()), 201
+    event = Event(name=payload.name, date=event_date, location=payload.location)
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event.to_dict()
 
 
-@events_bp.route('', methods=['GET'])
-def list_events():
-    """
-    List all events.
-    ---
-    responses:
-      200:
-        description: List of all events
-    """
-    events = Event.query.all()
-    return jsonify([event.to_dict() for event in events]), 200
+@router.get('')
+def list_events(db: Session = Depends(get_db)):
+    events = db.query(Event).all()
+    return [e.to_dict() for e in events]
 
 
-@events_bp.route('/<int:event_id>', methods=['GET'])
-def get_event(event_id):
-    """
-    Get a specific event by ID.
-    ---
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Event details
-      404:
-        description: Event not found
-    """
-    event = Event.query.get(event_id)
-
+@router.get('/{event_id}')
+def get_event(event_id: int, db: Session = Depends(get_db)):
+    event = db.get(Event, event_id)
     if not event:
-        return jsonify({'error': 'Event not found'}), 404
+        raise HTTPException(status_code=404, detail='Event not found')
+    return event.to_dict()
 
-    return jsonify(event.to_dict()), 200
 
-
-@events_bp.route('/<int:event_id>/seats', methods=['POST'])
-def bulk_create_seats(event_id):
-    """
-    Bulk create seats for an event.
-    Creates seats in format: A1, A2, A3... B1, B2, B3... etc.
-    
-    ---
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-      - name: body
-        in: body
-        required: true
-        schema:
-          properties:
-            num_rows:
-              type: integer
-              example: 5
-            seats_per_row:
-              type: integer
-              example: 20
-    responses:
-      201:
-        description: Seats created successfully
-      404:
-        description: Event not found
-    """
-    event = Event.query.get(event_id)
-
+@router.post('/{event_id}/seats', status_code=201)
+def bulk_create_seats(
+    event_id: int, payload: SeatBulkCreate, db: Session = Depends(get_db)
+):
+    event = db.get(Event, event_id)
     if not event:
-        return jsonify({'error': 'Event not found'}), 404
+        raise HTTPException(status_code=404, detail='Event not found')
 
-    data = request.get_json()
-    num_rows = data.get('num_rows', 10)
-    seats_per_row = data.get('seats_per_row', 10)
-
-    if num_rows <= 0 or seats_per_row <= 0:
-        return jsonify({'error': 'num_rows and seats_per_row must be positive'}), 400
+    if payload.num_rows <= 0 or payload.seats_per_row <= 0:
+        raise HTTPException(
+            status_code=400, detail='num_rows and seats_per_row must be positive'
+        )
 
     try:
-        # Generate seats: A1, A2, ..., B1, B2, etc.
-        for row_idx in range(num_rows):
-            row_letter = chr(65 + row_idx)  # A, B, C, D, etc.
-            for seat_num in range(1, seats_per_row + 1):
-                seat = Seat(
-                    event_id=event_id,
-                    row_letter=row_letter,
-                    seat_number=f"{row_letter}{seat_num}"
+        for row_idx in range(payload.num_rows):
+            row_letter = chr(65 + row_idx)
+            for seat_num in range(1, payload.seats_per_row + 1):
+                db.add(
+                    Seat(
+                        event_id=event_id,
+                        row_letter=row_letter,
+                        seat_number=f'{row_letter}{seat_num}',
+                    )
                 )
-                db.session.add(seat)
-
-        event.total_seats = num_rows * seats_per_row
-        db.session.commit()
-
-        return jsonify({
-            'message': f'Created {num_rows * seats_per_row} seats',
+        event.total_seats = payload.num_rows * payload.seats_per_row
+        db.commit()
+        return {
+            'message': f'Created {payload.num_rows * payload.seats_per_row} seats',
             'event_id': event_id,
-            'total_seats': event.total_seats
-        }), 201
+            'total_seats': event.total_seats,
+        }
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f'Failed to create seats: {exc}')
 
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Failed to create seats: {str(e)}'}), 500
 
-
-@events_bp.route('/<int:event_id>/seats', methods=['GET'])
-def list_event_seats(event_id):
-    """
-    List all seats for an event.
-    ---
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-      - name: status
-        in: query
-        type: string
-        example: "AVAILABLE"
-    responses:
-      200:
-        description: List of seats
-      404:
-        description: Event not found
-    """
-    event = Event.query.get(event_id)
-
+@router.get('/{event_id}/seats')
+def list_event_seats(
+    event_id: int,
+    status: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    event = db.get(Event, event_id)
     if not event:
-        return jsonify({'error': 'Event not found'}), 404
+        raise HTTPException(status_code=404, detail='Event not found')
 
-    status_filter = request.args.get('status')
-    query = Seat.query.filter_by(event_id=event_id)
-
-    if status_filter:
-        query = query.filter_by(status=status_filter)
-
+    query = db.query(Seat).filter_by(event_id=event_id)
+    if status:
+        query = query.filter_by(status=status)
     seats = query.all()
-    return jsonify([seat.to_dict() for seat in seats]), 200
+    return [s.to_dict() for s in seats]
