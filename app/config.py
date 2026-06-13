@@ -5,43 +5,28 @@ load_dotenv()
 
 
 class Config:
-    """Base configuration"""
-    SQLALCHEMY_DATABASE_URI = os.getenv(
+    """Application configuration."""
+
+    DATABASE_URL = os.getenv(
         'DATABASE_URL',
-        'mysql+pymysql://root:password@localhost:3306/booking_db?charset=utf8mb4'
+        'postgresql+psycopg2://booking_user:booking_pass@localhost:5432/booking_db',
     )
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': 10,
-        'pool_recycle': 3600,
-        'pool_pre_ping': True,
-    }
-    JSON_SORT_KEYS = False
-    PROPAGATE_EXCEPTIONS = True
-
-
-class DevelopmentConfig(Config):
-    """Development configuration"""
-    DEBUG = True
-    TESTING = False
+    APP_ENV = os.getenv('APP_ENV', 'development')
+    DEBUG = os.getenv('DEBUG', 'true').lower() in ('1', 'true', 'yes')
+    HOST = os.getenv('HOST', '0.0.0.0')
+    PORT = int(os.getenv('PORT', '8000'))
 
 
 class TestingConfig(Config):
-    """Testing configuration"""
+    """Testing configuration (in-memory SQLite)."""
+
+    DATABASE_URL = 'sqlite:///:memory:'
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    SQLALCHEMY_ENGINE_OPTIONS = {}
-
-
-class ProductionConfig(Config):
-    """Production configuration"""
-    DEBUG = False
-    TESTING = False
 
 
 config_by_name = {
-    'development': DevelopmentConfig,
+    'development': Config,
     'testing': TestingConfig,
-    'production': ProductionConfig,
-    'default': DevelopmentConfig
+    'production': Config,
+    'default': Config,
 }
