@@ -1,11 +1,13 @@
 """
 Demo / portfolio seed data — presentation layer only.
-Does not modify booking or concurrency logic.
 """
 
 from datetime import datetime, timedelta
-from app.extensions import db
-from app.models import Event, Seat, Booking
+
+from sqlalchemy.orm import Session
+
+from app.models import Booking, Event, Seat
+from app.services import BookingManager
 
 
 EVENT_SPECS = [
@@ -54,11 +56,11 @@ EVENT_SPECS = [
 ]
 
 
-def _create_seats_for_event(event_id, num_rows, seats_per_row):
+def _create_seats_for_event(session: Session, event_id: int, num_rows: int, seats_per_row: int):
     for row_idx in range(num_rows):
         row_letter = chr(65 + row_idx)
         for seat_num in range(1, seats_per_row + 1):
-            db.session.add(
+            session.add(
                 Seat(
                     event_id=event_id,
                     row_letter=row_letter,
@@ -68,43 +70,38 @@ def _create_seats_for_event(event_id, num_rows, seats_per_row):
             )
 
 
-def seed_database(reset=False, include_sample_bookings=True):
-    """
-    Populate the database with portfolio demo events and seats.
-
-    Returns:
-        dict: summary of created records
-    """
+def seed_database(session: Session, reset=False, include_sample_bookings=True):
     if reset:
-        Booking.query.delete()
-        Seat.query.delete()
-        Event.query.delete()
-        db.session.commit()
+        session.query(Booking).delete()
+        session.query(Seat).delete()
+        session.query(Event).delete()
+        session.commit()
 
-    existing = Event.query.filter(
+    existing = session.query(Event).filter(
         Event.name.in_([spec['name'] for spec in EVENT_SPECS])
     ).count()
+
     if existing >= len(EVENT_SPECS) and not reset:
         return {
             'status': 'already_seeded',
             'message': 'Demo events already exist. Use reset=True to reseed.',
-            'events': Event.query.count(),
-            'seats': Seat.query.count(),
-            'bookings': Booking.query.count(),
+            'events': session.query(Event).count(),
+            'seats': session.query(Seat).count(),
+            'bookings': session.query(Booking).count(),
         }
 
     if existing > 0 and reset:
-        Booking.query.delete()
-        Seat.query.delete()
-        Event.query.filter(
+        session.query(Booking).delete()
+        session.query(Seat).delete()
+        session.query(Event).filter(
             Event.name.in_([spec['name'] for spec in EVENT_SPECS])
         ).delete(synchronize_session=False)
-        db.session.commit()
+        session.commit()
 
     created_events = []
 
     for spec in EVENT_SPECS:
-        if Event.query.filter_by(name=spec['name']).first() and not reset:
+        if session.query(Event).filter_by(name=spec['name']).first() and not reset:
             continue
 
         base = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
@@ -120,30 +117,27 @@ def seed_database(reset=False, include_sample_bookings=True):
             category=spec['category'],
             total_seats=spec['num_rows'] * spec['seats_per_row'],
         )
-        db.session.add(event)
-        db.session.flush()
+        session.add(event)
+        session.flush()
 
-        _create_seats_for_event(event.id, spec['num_rows'], spec['seats_per_row'])
+        _create_seats_for_event(session, event.id, spec['num_rows'], spec['seats_per_row'])
         created_events.append(event)
 
-    db.session.commit()
+    session.commit()
 
     if include_sample_bookings and created_events:
-        _seed_sample_bookings(created_events)
+        _seed_sample_bookings(session, created_events)
 
     return {
         'status': 'seeded',
-        'events': Event.query.count(),
-        'seats': Seat.query.count(),
-        'bookings': Booking.query.count(),
+        'events': session.query(Event).count(),
+        'seats': session.query(Seat).count(),
+        'bookings': session.query(Booking).count(),
         'created_event_names': [e.name for e in created_events],
     }
 
 
-def _seed_sample_bookings(events):
-    """A few pre-booked seats so statistics are not empty on first load."""
-    from app.services import BookingManager
-
+def _seed_sample_bookings(session: Session, events):
     targets = [
         ('Movie Night', ['A1', 'A2', 'B5']),
         ('Music Concert', ['C3', 'C4']),
@@ -151,11 +145,13 @@ def _seed_sample_bookings(events):
     ]
 
     for event_name, seat_numbers in targets:
-        event = Event.query.filter_by(name=event_name).first()
+        event = session.query(Event).filter_by(name=event_name).first()
         if not event:
             continue
         for idx, seat_number in enumerate(seat_numbers):
-            seat = Seat.query.filter_by(event_id=event.id, seat_number=seat_number).first()
+            seat = session.query(Seat).filter_by(
+                event_id=event.id, seat_number=seat_number
+            ).first()
             if not seat or seat.status == 'BOOKED':
                 continue
-            BookingManager.book_seat(seat.id, f'demo.user{idx}@ticketflow.com')
+            BookingManager.book_seat(session, seat.id, f'demo.user{idx}@ticketflow.com')
