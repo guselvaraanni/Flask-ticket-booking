@@ -1,21 +1,28 @@
 from datetime import datetime
-from app.extensions import db
+from typing import Optional
 
-class Booking(db.Model):
-    """Booking model - represents a confirmed seat booking"""
+from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.database import Base
+
+
+class Booking(Base):
+    """Confirmed seat booking."""
+
     __tablename__ = 'bookings'
 
-    id = db.Column(db.Integer, primary_key=True)
-    seat_id = db.Column(db.Integer, db.ForeignKey('seats.id'), nullable=False, unique=True, index=True)
-    user_id = db.Column(db.String(100), nullable=False, index=True)  # In real app, would FK to users
-    booking_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    transaction_id = db.Column(db.String(255), unique=True, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    seat_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('seats.id'), nullable=False, unique=True, index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    booking_timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    transaction_id: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
 
-    def __repr__(self):
-        return f'<Booking seat_id={self.seat_id}, user_id={self.user_id}>'
+    seat = relationship('Seat', back_populates='bookings')
 
     def to_dict(self):
-        """Convert booking to dictionary"""
         return {
             'id': self.id,
             'seat_id': self.seat_id,
