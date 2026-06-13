@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 
 # Configuration
-API_BASE_URL = "http://localhost:5000/api"
+API_BASE_URL = "http://localhost:8000/api"
 NUM_CONCURRENT_REQUESTS = 51
 TIMEOUT = 10
 
