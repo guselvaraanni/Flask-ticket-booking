@@ -1,5 +1,7 @@
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+"""
+Legacy import shim — use app.database for engine, Base, and sessions.
+"""
 
-db = SQLAlchemy()
-migrate = Migrate()
+from app.database import Base, SessionLocal, engine, get_db, init_db
+
+__all__ = ['Base', 'SessionLocal', 'engine', 'get_db', 'init_db']

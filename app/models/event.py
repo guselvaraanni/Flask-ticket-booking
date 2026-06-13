@@ -1,28 +1,30 @@
 from datetime import datetime
-from app.extensions import db
+from typing import Optional
 
-class Event(db.Model):
-    """Event model - represents concerts, shows, movies, etc."""
+from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.database import Base
+
+
+class Event(Base):
+    """Event model — concerts, shows, movies, etc."""
+
     __tablename__ = 'events'
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False, index=True)
-    date = db.Column(db.DateTime, nullable=False)
-    location = db.Column(db.String(255), nullable=True)
-    description = db.Column(db.Text, nullable=True)
-    ticket_price = db.Column(db.Float, default=25.0)
-    category = db.Column(db.String(50), default='general')
-    total_seats = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ticket_price: Mapped[float] = mapped_column(Float, default=25.0)
+    category: Mapped[str] = mapped_column(String(50), default='general')
+    total_seats: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    # Relationships
-    seats = db.relationship('Seat', backref='event', lazy='dynamic', cascade='all, delete-orphan')
-
-    def __repr__(self):
-        return f'<Event {self.name}>'
+    seats = relationship('Seat', back_populates='event', cascade='all, delete-orphan')
 
     def to_dict(self):
-        """Convert event to dictionary"""
         return {
             'id': self.id,
             'name': self.name,

@@ -1,168 +1,58 @@
-from flask import Blueprint, request, jsonify
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 from app.services import BookingManager
-from app.models import Booking
 
-bookings_bp = Blueprint('bookings', __name__, url_prefix='/api/bookings')
+router = APIRouter(prefix='/api/bookings', tags=['bookings'])
 
-@bookings_bp.route('', methods=['POST'])
-def create_booking():
-    """
-    Book a specific seat for a user.
-    
-    This endpoint uses MySQL InnoDB SELECT ... FOR UPDATE (row-level locking)
-    to prevent race conditions. Only one user can book a seat at a time.
-    
-    ---
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          properties:
-            seat_id:
-              type: integer
-              example: 1
-            user_id:
-              type: string
-              example: "user@example.com"
-    responses:
-      201:
-        description: Booking successful
-      409:
-        description: Seat already booked (conflict)
-      404:
-        description: Seat not found
-      400:
-        description: Bad request
-    """
-    data = request.get_json()
 
-    if not data or not data.get('seat_id') or not data.get('user_id'):
-        return jsonify({'error': 'Missing required fields: seat_id, user_id'}), 400
+class BookingCreate(BaseModel):
+    seat_id: int
+    user_id: str
 
-    seat_id = data.get('seat_id')
-    user_id = data.get('user_id')
 
-    # Call the booking service with row-level locking
-    success, message, booking_data, status_code = BookingManager.book_seat(seat_id, user_id)
-
+@router.post('', status_code=201)
+def create_booking(payload: BookingCreate, db: Session = Depends(get_db)):
+    """Book a seat using PostgreSQL row-level locking (SELECT ... FOR UPDATE)."""
+    success, message, booking_data, status_code = BookingManager.book_seat(
+        db, payload.seat_id, payload.user_id
+    )
     if success:
-        return jsonify({
-            'message': message,
-            'booking': booking_data
-        }), status_code
-    else:
-        return jsonify({'error': message}), status_code
+        return {'message': message, 'booking': booking_data}
+    raise HTTPException(status_code=status_code, detail=message)
 
 
-@bookings_bp.route('/<int:booking_id>', methods=['GET'])
-def get_booking(booking_id):
-    """
-    Retrieve a booking by ID.
-    ---
-    parameters:
-      - name: booking_id
-        in: path
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Booking details
-      404:
-        description: Booking not found
-    """
-    booking = BookingManager.get_booking(booking_id)
-
+@router.get('/{booking_id}')
+def get_booking(booking_id: int, db: Session = Depends(get_db)):
+    booking = BookingManager.get_booking(db, booking_id)
     if not booking:
-        return jsonify({'error': 'Booking not found'}), 404
+        raise HTTPException(status_code=404, detail='Booking not found')
+    return booking
 
-    return jsonify(booking), 200
 
-
-@bookings_bp.route('/<int:booking_id>', methods=['DELETE'])
-def cancel_booking(booking_id):
-    """
-    Cancel a booking and release the seat back to AVAILABLE.
-    ---
-    parameters:
-      - name: booking_id
-        in: path
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Booking cancelled
-      404:
-        description: Booking not found
-    """
-    success, message, _, status_code = BookingManager.cancel_booking(booking_id)
-
+@router.delete('/{booking_id}')
+def cancel_booking(booking_id: int, db: Session = Depends(get_db)):
+    success, message, _, status_code = BookingManager.cancel_booking(db, booking_id)
     if success:
-        return jsonify({'message': message}), status_code
-    else:
-        return jsonify({'error': message}), status_code
+        return {'message': message}
+    raise HTTPException(status_code=status_code, detail=message)
 
 
-@bookings_bp.route('/event/<int:event_id>/available', methods=['GET'])
-def get_available_seats(event_id):
-    """
-    Get all available seats for an event.
-    ---
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-    responses:
-      200:
-        description: List of available seats
-    """
-    seats = BookingManager.get_available_seats(event_id)
-    return jsonify({
-        'event_id': event_id,
-        'available_seats': seats,
-        'count': len(seats)
-    }), 200
+@router.get('/event/{event_id}/available')
+def get_available_seats(event_id: int, db: Session = Depends(get_db)):
+    seats = BookingManager.get_available_seats(db, event_id)
+    return {'event_id': event_id, 'available_seats': seats, 'count': len(seats)}
 
 
-@bookings_bp.route('/event/<int:event_id>/booked', methods=['GET'])
-def get_booked_seats(event_id):
-    """
-    Get all booked seats for an event.
-    ---
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-    responses:
-      200:
-        description: List of booked seats
-    """
-    seats = BookingManager.get_booked_seats(event_id)
-    return jsonify({
-        'event_id': event_id,
-        'booked_seats': seats,
-        'count': len(seats)
-    }), 200
+@router.get('/event/{event_id}/booked')
+def get_booked_seats(event_id: int, db: Session = Depends(get_db)):
+    seats = BookingManager.get_booked_seats(db, event_id)
+    return {'event_id': event_id, 'booked_seats': seats, 'count': len(seats)}
 
 
-@bookings_bp.route('/event/<int:event_id>/stats', methods=['GET'])
-def get_booking_stats(event_id):
-    """
-    Get booking statistics for an event.
-    ---
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Booking statistics
-    """
-    stats = BookingManager.get_booking_stats(event_id)
-    return jsonify({
-        'event_id': event_id,
-        'stats': stats
-    }), 200
+@router.get('/event/{event_id}/stats')
+def get_booking_stats(event_id: int, db: Session = Depends(get_db)):
+    stats = BookingManager.get_booking_stats(db, event_id)
+    return {'event_id': event_id, 'stats': stats}
